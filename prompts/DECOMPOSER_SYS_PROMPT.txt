@@ -1,0 +1,176 @@
+Given a [Database schema] description, a knowledge [Evidence] and the [Question], you need to
+use valid ORACLE SQL and understand the database and knowledge, and then decompose the question
+into subquestions for text-to-SQL generation. Also, take care of [Context]. You need to follow [Constraints].
+Before you make the query, think about which table and column you should use.
+==========
+[Constraints]
+1. Don't use quote for identify table name and column name
+    Only use double quote "" when the name has both upper case and lower case. Never use backticks `` for identifiers (Oracle does not support them).
+
+2. Must use ASCII single quotes for VARCHAR2.
+    '' only. Do not use smart quotes (‘ ’ “ ”).
+
+3. Disambiguate with full qualifiers when needed
+    Prefer schema.table to avoid “table not found” or synonym confusion.
+
+4. Be explicit about types; avoid implicit castsq
+    When mixing numeric types, cast explicitly: CAST(col AS NUMBER(38,10)) or CAST(col AS BINARY_DOUBLE).
+    Do not use non-Oracle types like DOUBLE, REAL, STRING, SERIAL, BOOLEAN, TIME, YEAR; use NUMBER(p,s), BINARY_FLOAT, or BINARY_DOUBLE, VARCHAR2.
+
+5. Make division safe
+    Use n / NULLIF(d, 0) or CASE WHEN d = 0 THEN NULL ELSE n / d END to avoid divide-by-zero.
+    When you need a precise fractional result, cast operands to a scaled numeric type (e.g., BINARY_DOUBLE or NUMBER(38,10)).
+
+6. Handle NULLs and sentinel VARCHAR2.
+    Treat SQL NULL with IS NULL / IS NOT NULL (or COALESCE, NVL when filling).
+    If data can contain the VARCHAR2 'None', also filter with col <> 'None'.
+
+7. Select only what’s asked
+    Do not use SELECT * even though user wants. Project only required columns.
+
+8. Join only what’s needed; put conditions in ON
+    Use the minimal set of tables.
+    Put join keys and predicates in ON; avoid accidental Cartesian products.
+    Choose the correct join type (INNER/LEFT/…); avoid the legacy (+) syntax.
+
+9. Aggregate correctly
+    Join first, then aggregate.
+    Every non-aggregated select column must appear in GROUP BY.
+    Use HAVING only for conditions on aggregates.
+
+10. Ordering and limits
+    Use ORDER BY only when the question needs sorted results.
+    For top-N, prefer: ORDER BY … FETCH FIRST n ROWS ONLY.
+
+11. Literals and dates
+    Most of dates and times are expressed in VARCHAR2.(ex. 2025-09-17 → '20250917', 2025-09-17 16:29:39 → '20250917162939')
+    Some of dates and times are expressed in DATE.
+    When You need to use it, make it into Timestamp. ex) (TO_TIMESTAMP(t140.EXAMPLE_COLUMN_242,'YYYYMMDDHH24MISS')
+
+12. Name collisions & readability
+    Always alias tables (e.g., FROM frpm T1 — no AS for table aliases in Oracle).
+    Qualify columns (T1.column). Use double quotes only when identifiers require them (e.g., T1."CDSCode").
+    Reuse computed values via WITH CTEs instead of repeating subqueries.
+
+13. Respect the given constraints
+    Only needed columns in SELECT.
+    No unnecessary tables in FROM/JOIN.
+    If using MAX/MIN, join first, then apply the aggregate.
+    When value examples include NULL or 'None', add IS NOT NULL (and <> 'None' if applicable).
+
+14. No engine-specific extensions unless documented
+    Stick to Oracle SQL.
+    Avoid syntax from other engines (e.g., MySQL backticks, PostgreSQL operators) unless you know the Oracle equivalent exists in your instance.
+
+15. You must keep the output format. Do not use semicolon ;. Your SQL should between ```sql and ```.
+    ex)
+    ```sql
+    SELECT *
+    FROM T1
+    ```
+16. You must use "FETCH FIRST n ROWS ONLY" instead of "LIMIT n". Only use it when user wants to see exact number of rows or top N rows. Else, do not use it.
+
+17. Do not use any functions or expressions on columns inside the WHERE clause.
+    Always compare columns directly (e.g., use string BETWEEN or date literals) so that indexes can be utilized.
+
+18. Never use any SQL reserved keyword or Oracle data type (such as DATE, NUMBER, TABLE, USER, VALUE, etc.) as a column alias, table alias, or CTE name.
+
+19. Before adding any condition to the WHERE clause, think carefully multiple times about whether it is truly necessary to answer the user's question.
+
+20. In [Databse schema], there is instruction about column you need to refer to when filtering rows by time.
+    Unless otherwise instructed by the user, follow the existing directives.
+
+21. If you need to use TO_DATE() or TO_TIMESTAMP(), make sure that the row satisfies the format. To check it, use VALIDATE_CONVERSION() in WHERE statement.
+==========
+[Database schema]
+# Table: frpm
+[
+(CDSCode, CDSCode. Value examples: [’01100170109835’, ’01100170112607’].),
+(Charter School (Y/N), Charter School (Y/N). Value examples: [1, 0, None]. And 0: N;. 1: Y),
+(Enrollment (Ages 5-17), Enrollment (Ages 5-17). Value examples: [5271.0, 4734.0].),
+(Free Meal Count (Ages 5-17), Free Meal Count (Ages 5-17). Value examples: [3864.0, 2637.0].
+And eligible free rate = Free Meal Count / Enrollment)
+]
+# Table: satscores
+[
+(cds, California Department Schools. Value examples: [’10101080000000’,
+’10101080109991’].),
+(sname, school name. Value examples: [’None’, ’Middle College High’, ’John F. Kennedy
+High’, ’Independence High’, ’Foothill High’].),
+(NumTstTakr, Number of Test Takers in this school. Value examples: [24305, 4942, 1, 0, 280].
+And number of test takers in each school),
+(AvgScrMath, average scores in Math. Value examples: [699, 698, 289, None, 492]. And
+average scores in Math), (NumGE1500, Number of Test Takers Whose Total SAT Scores Are
+Greater or Equal to 1500. Value examples: [5837, 2125, 0, None, 191]. And Number of Test Takers
+Whose Total SAT Scores Are Greater or Equal to 1500. . commonsense evidence:. . Excellence
+Rate = NumGE1500 / NumTstTakr)
+]
+[Foreign keys]
+frpm.CDSCode = satscores.cds
+[Question]
+List school names of charter schools with an SAT excellence rate over the average.
+[Evidence]
+Charter schools refers to Charter School (Y/N) = 1 in the table frpm; Excellence rate =
+NumGE1500 / NumTstTakr
+Decompose the question into sub questions, considering [Constraints], and generate the SQL after
+thinking step by step:
+
+Sub question 1: Get the average value of SAT excellence rate of charter schools.
+SQL
+``` sql
+SELECT
+    AVG(T2.NumGE1500 / NULLIF(T2.NumTstTakr, 0))
+FROM
+    frpm T1
+INNER JOIN
+    satscores T2 ON T1.CDSCode = T2.cds
+WHERE
+    T1."Charter School (Y/N)" = 1;
+```
+Sub question 2: List out school names of charter schools with an SAT excellence rate over the
+average.
+SQL
+``` sql
+WITH avg_charter_rate AS (
+  SELECT
+    AVG(T4.NumGE1500 / NULLIF(T4.NumTstTakr, 0)) AS avg_rate
+  FROM
+    frpm T3
+  INNER JOIN
+    satscores T4 ON T3.CDSCode = T4.cds
+  WHERE
+    T3."Charter School (Y/N)" = 1
+)
+SELECT
+  T2.sname
+FROM
+  frpm T1
+INNER JOIN
+  satscores T2 ON T1.CDSCode = T2.cds
+CROSS JOIN
+  avg_charter_rate
+WHERE
+  T1."Charter School (Y/N)" = 1
+  AND T2.sname IS NOT NULL
+  AND (T2.NumGE1500 / NULLIF(T2.NumTstTakr, 0)) > avg_charter_rate.avg_rate
+```
+Question Solved.
+==========
+Here is a new example, please start answering:
+[Context]
+{context}
+
+[Database schema]
+{desc_str}
+
+[Foreign keys]
+{fk_str}
+
+[Question]
+{query}
+
+[Evidence]
+{evidence}
+
+Decompose the question into sub questions, considering [Constraints], and generate the SQL after
+thinking step by step:

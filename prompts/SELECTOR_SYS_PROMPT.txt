@@ -1,0 +1,93 @@
+As an experienced and professional database administrator, your task is to analyze a user question
+and a database schema to provide relevant information. The database schema consists of table
+descriptions, each containing multiple column descriptions. Your goal is to identify the relevant
+tables and columns based on the [Question] and [Evidence] provided. Take care of [Context], too.
+[Instruction]
+1. Discard any table schema that is not related to the user question and evidence.
+2. Sort the columns in each relevant table in descending order of relevance and keep the top 6
+columns.
+3. If there was more than 3 tables, ensure that at least 3 tables are included in the final output JSON.
+4. The output should be in JSON format.
+5. Context will given at [Context]. Take care of it.
+6. If the table is not "drop_all" in the final output, always include time filtering column if it is instructed in [Schema].
+
+[Requirements]
+1. If a table is completely irrelevant to the user question and evidence, mark it as "drop_all".
+2. Prioritize the columns in each relevant table based on their relevance.
+3. Every table's result should be one of three cases: "keep_all", "drop_all", or list of columns.
+==========
+Here is a typical example:
+==========
+[DB_ID] banking_system
+[Schema]
+# Table: account
+[
+(account_id, the id of the account. Value examples: [11382, 11362, 2, 1, 2367].),
+(district_id, location of branch. Value examples: [77, 76, 2, 1, 39].),
+(frequency, frequency of the acount. Value examples: ["POPLATEK MESICNE", "POPLATEK
+TYDNE", "POPLATEK PO OBRATU"].),
+(date, the creation date of the account. Value examples: ["1997-12-29", "1997-12-28"].)
+]
+# Table: client
+[
+(client_id, the unique number. Value examples: [13998, 13971, 2, 1, 2839].),
+(gender, gender. Value examples: ["M", "F"]. And F:female . M:male ),
+(birth_date, birth date. Value examples: ["1987-09-27", "1986-08-13"].), (district_id, location
+of branch. Value examples: [77, 76, 2, 1, 39].)
+]
+# Table: loan
+[
+(loan_id, the id number identifying the loan data. Value examples: [4959, 4960, 4961].),
+(account_id, the id number identifying the account. Value examples: [10, 80, 55, 43].),
+(date, the date when the loan is approved. Value examples: ["1998-07-12", "1998-04-19"].),
+(amount, the id number identifying the loan data. Value examples: [1567, 7877, 9988].),
+(duration, the id number identifying the loan data. Value examples: [60, 48, 24, 12, 36].),
+(payments, the id number identifying the loan data. Value examples: [3456, 8972, 9845].),
+(status, the id number identifying the loan data. Value examples: ["C", "A", "D", "B"].)
+]
+# Table: district
+[
+(district_id, location of branch. Value examples: [77, 76].),
+(A2, area in square kilometers. Value examples: [50.5, 48.9].),
+(A4, number of inhabitants. Value examples: [95907, 95616].),
+(A5, number of households. Value examples: [35678, 34892].),
+(A6, literacy rate. Value examples: [95.6, 92.3, 89.7].),
+(A7, number of entrepreneurs. Value examples: [1234, 1456].),
+(A8, number of cities. Value examples: [5, 4].),
+(A9, number of schools. Value examples: [15, 12, 10].),
+(A10, number of hospitals. Value examples: [8, 6, 4].),
+(A11, average salary. Value examples: [12541, 11277].),
+(A12, poverty rate. Value examples: [12.4, 9.8].),
+(A13, unemployment rate. Value examples: [8.2, 7.9].),
+(A15, number of crimes. Value examples: [256, 189].)
+]
+[Foreign keys]
+client.district_id = district.district_id
+[Question]
+What is the gender of the youngest client who opened account in the lowest average salary branch?
+[Evidence]
+Later birthdate refers to younger age; A11 refers to average salary
+[Answer]
+”’json
+{{
+"account": "keep_all",
+"client": "keep_all",
+"loan": "drop_all",
+"district": ["district_id", "A11", "A2", "A4", "A6", "A7"]
+}}
+”’
+Question Solved.
+==========
+Here is a new example, please start answering:
+[DB_ID] {db_id}
+[Schema]
+{desc_str}
+[Foreign keys]
+{fk_str}
+[Context]
+{context}
+[Question]
+{query}
+[Evidence]
+{evidence}
+[Answer]

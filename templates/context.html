@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Context & DB 기록</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+      background: #f5f6fa;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 48px 16px;
+      color: #111827;
+    }
+    .panel {
+      width: min(760px, 100%);
+      padding: 32px;
+      border-radius: 20px;
+      background: #ffffff;
+      box-shadow: 0 24px 55px rgba(15, 23, 42, 0.18);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .user-input {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 6px 10px;
+    }
+    .user-input label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .user-input select,
+    .user-input input {
+      border: none;
+      background: transparent;
+      font-size: 0.95rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      min-width: 120px;
+    }
+    .user-input select:focus,
+    .user-input input:focus {
+      outline: 2px solid rgba(99, 102, 241, 0.3);
+      background: #fff;
+    }
+    .refresh-btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .refresh-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 15px 25px rgba(99, 102, 241, 0.25);
+    }
+    .context-list {
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      padding: 16px;
+      max-height: 560px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .context-item {
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      padding: 12px 14px;
+    }
+    .context-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .context-item pre {
+      margin: 8px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+      font-size: 0.95rem;
+      color: #1f2937;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #4338ca;
+      background: rgba(99, 102, 241, 0.12);
+    }
+    .timestamp {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+    .empty {
+      text-align: center;
+      color: #6b7280;
+      margin: 24px 0;
+    }
+    .status {
+      margin-top: 18px;
+      font-size: 0.9rem;
+      color: #4b5563;
+      min-height: 1.2em;
+    }
+    .exec-section,
+    .db-section {
+      margin-top: 36px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 24px;
+    }
+    .exec-header,
+    .db-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .exec-header h2,
+    .db-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    .exec-list,
+    .db-list {
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .exec-item,
+    .db-item {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #ffffff;
+      border: 1px solid transparent;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .exec-item-current,
+    .db-item-current {
+      border-color: rgba(99, 102, 241, 0.4);
+      background: rgba(99, 102, 241, 0.08);
+    }
+    .exec-user,
+    .db-user {
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .exec-divider,
+    .db-divider {
+      color: #9ca3af;
+      font-size: 1rem;
+    }
+    .exec-count,
+    .db-name {
+      font-weight: 500;
+      color: #4c1d95;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="header">
+      <h1>저장된 Context 기록</h1>
+      <div class="controls">
+        <div class="user-input">
+          <label for="userSelect">user_id</label>
+          <select id="userSelect" onchange="handleUserChange(event)">
+            <option value="global">global</option>
+          </select>
+          <input
+            id="userInput"
+            type="text"
+            placeholder="직접 입력 후 Enter"
+            onkeydown="handleUserInput(event)"
+          />
+        </div>
+        <button type="button" class="refresh-btn" onclick="fetchContext()">새로고침</button>
+      </div>
+    </div>
+    <div id="contextList" class="context-list">
+      <p class="empty">불러오는 중...</p>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="exec-section">
+      <div class="exec-header">
+        <h2>SQL 실행 횟수</h2>
+        <button type="button" class="refresh-btn" onclick="fetchExecInfo()">새로고침</button>
+      </div>
+      <div id="execList" class="exec-list">
+        <p class="empty">불러오는 중...</p>
+      </div>
+      <div class="status" id="execStatus"></div>
+    </div>
+    <div class="db-section">
+      <div class="db-header">
+        <h2>DB 선택 현황</h2>
+        <button type="button" class="refresh-btn" onclick="fetchDbInfo()">새로고침</button>
+      </div>
+      <div id="dbList" class="db-list">
+        <p class="empty">불러오는 중...</p>
+      </div>
+      <div class="status" id="dbStatus"></div>
+    </div>
+  </div>
+  <script>
+    let currentUser = "global";
+    let dbSnapshot = {};
+    let execSnapshot = {};
+
+    function escapeHtml(text) {
+      const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    function formatTimestamp(value) {
+      if (!value) {
+        return "";
+      }
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+      return date.toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    }
+
+    function renderUsers(users = []) {
+      const select = document.getElementById("userSelect");
+      const dbUsers = Object.keys(dbSnapshot || {});
+      const execUsers = Object.keys(execSnapshot || {});
+      const unique = Array.from(new Set(["global", ...users, ...dbUsers, ...execUsers])).filter(Boolean);
+      select.innerHTML = unique
+        .map(
+          (user) =>
+            `<option value="${user}" ${user === currentUser ? "selected" : ""}>${user}</option>`,
+        )
+        .join("");
+    }
+
+    function renderContexts(history = []) {
+      const container = document.getElementById("contextList");
+      if (!Array.isArray(history) || history.length === 0) {
+        container.innerHTML = '<p class="empty">아직 저장된 context가 없습니다.</p>';
+        return;
+      }
+      const items = history
+        .map((entry, index) => {
+          let contextValue = "";
+          let createdAtValue = "";
+          if (entry && typeof entry === "object") {
+            if (typeof entry.context === "string") {
+              contextValue = entry.context;
+            } else if (entry.context != null) {
+              contextValue = String(entry.context);
+            }
+            if (typeof entry.created_at === "string") {
+              createdAtValue = entry.created_at;
+            }
+          } else if (entry != null) {
+            contextValue = String(entry);
+          }
+          const safeEntry = escapeHtml(contextValue || "(빈 값)");
+          const timestamp = escapeHtml(formatTimestamp(createdAtValue) || "시간 정보 없음");
+          const label = `#${history.length - index}`;
+          return `
+            <div class="context-item">
+              <div class="context-meta">
+                <span class="badge">${label}</span>
+                <span class="timestamp">${timestamp}</span>
+              </div>
+              <pre>${safeEntry}</pre>
+            </div>
+          `;
+        })
+        .reverse()
+        .join("");
+      container.innerHTML = items;
+    }
+
+    function renderDbList(dbMap = {}) {
+      const container = document.getElementById("dbList");
+      const entries = Object.entries(dbMap || {});
+      if (!entries.length) {
+        container.innerHTML = '<p class="empty">DB 선택 정보가 없습니다.</p>';
+        return;
+      }
+      const rows = entries
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([user, dbName]) => {
+          const safeUser = escapeHtml(user || "알 수 없음");
+          const safeDb = escapeHtml(dbName || "미선택");
+          const highlight = user === currentUser ? " db-item-current" : "";
+          return `
+            <div class="db-item${highlight}">
+              <span class="db-user">${safeUser}</span>
+              <span class="db-divider">→</span>
+              <span class="db-name">${safeDb || "미선택"}</span>
+            </div>
+          `;
+        })
+        .join("");
+      container.innerHTML = rows;
+    }
+
+    function renderExecList(execMap = {}) {
+      const container = document.getElementById("execList");
+      const entries = Object.entries(execMap || {});
+      if (!entries.length) {
+        container.innerHTML = '<p class="empty">SQL 실행 기록이 없습니다.</p>';
+        return;
+      }
+      const rows = entries
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([user, count]) => {
+          const safeUser = escapeHtml(user || "알 수 없음");
+          const safeCount = escapeHtml(String(count ?? 0));
+          const highlight = user === currentUser ? " exec-item-current" : "";
+          return `
+            <div class="exec-item${highlight}">
+              <span class="exec-user">${safeUser}</span>
+              <span class="exec-divider">→</span>
+              <span class="exec-count">${safeCount}</span>
+            </div>
+          `;
+        })
+        .join("");
+      container.innerHTML = rows;
+    }
+
+    function handleUserChange(event) {
+      currentUser = event.target.value || "global";
+      fetchContext();
+    }
+
+    function handleUserInput(event) {
+      if (event.key === "Enter") {
+        const value = event.target.value.trim();
+        if (value) {
+          currentUser = value;
+          event.target.value = "";
+          fetchContext();
+        }
+      }
+    }
+
+    async function fetchContext() {
+      const status = document.getElementById("status");
+      status.textContent = "불러오는 중...";
+      try {
+        const res = await fetch(`/ui/context?user_id=${encodeURIComponent(currentUser)}`);
+        if (!res.ok) throw new Error("요청 실패");
+        const data = await res.json();
+        renderContexts(data.history || []);
+        renderUsers(data.known_users || []);
+        status.textContent = `${data.user_id || "global"}: 총 ${data.history?.length || 0}건`;
+      } catch (error) {
+        status.textContent = "context를 불러오지 못했습니다.";
+        renderContexts([]);
+      }
+    }
+
+    async function fetchDbInfo() {
+      const status = document.getElementById("dbStatus");
+      status.textContent = "불러오는 중...";
+      try {
+        const res = await fetch("/ui/db");
+        if (!res.ok) throw new Error("요청 실패");
+        const data = await res.json();
+        dbSnapshot = data.db_ids || {};
+        renderDbList(dbSnapshot);
+        renderUsers([]);
+        status.textContent = `총 ${Object.keys(dbSnapshot || {}).length}명의 사용자`;
+      } catch (error) {
+        status.textContent = "DB 정보를 불러오지 못했습니다.";
+        renderDbList({});
+      }
+    }
+
+    async function fetchExecInfo() {
+      const status = document.getElementById("execStatus");
+      status.textContent = "불러오는 중...";
+      try {
+        const res = await fetch("/ui/sql_exec");
+        if (!res.ok) throw new Error("요청 실패");
+        const data = await res.json();
+        execSnapshot = data.sql_exec_num || {};
+        renderExecList(execSnapshot);
+        renderUsers([]);
+        status.textContent = `총 ${Object.keys(execSnapshot || {}).length}명의 사용자`;
+      } catch (error) {
+        status.textContent = "SQL 실행 정보를 불러오지 못했습니다.";
+        execSnapshot = {};
+        renderExecList({});
+      }
+    }
+
+    async function initialize() {
+      await Promise.all([fetchDbInfo(), fetchExecInfo(), fetchContext()]);
+    }
+
+    initialize();
+  </script>
+</body>
+</html>

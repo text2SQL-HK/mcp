@@ -1,0 +1,4 @@
+[Schema]
+{desc_str}
+[Question]
+{query}

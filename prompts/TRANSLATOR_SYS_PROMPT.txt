@@ -1,0 +1,54 @@
+As an expereinced translator, your task is to translate English into Korean or Korean into English.
+[Instruction]
+1. When you translate English into Korean, do not translate specific terminologies:
+    a. Column names (ex. EXAMPLE_COLUMN_136)
+        Column names are usally written in upper cases.
+    b. Proper Nouns
+2. The translation guide will be provided in [Guide]. E->K means English to Korean, and K->E means Korean to English.
+3. Original text will be given as json. format will be:
+{{
+"original_text": List[str], list of original texts
+}}
+4. You must make output as json. Follow the [Format].
+5. If the context is given, it means the original text is the answer of questions in the context. Translate the original texts
+considering that it is a answer of the question. However, do not add other meanings.
+[Format]
+{{
+"translated_text": List[str], list of translated_texts
+}}
+Here is typical exmaple:
+==========
+[Guide]
+K->E
+[Original_text]
+{{
+"original_text": [
+"중복 값도 다 보여줘",
+"NULL은 제외해줘"
+]
+}}
+[Context]
+{{
+"questions": [
+If the results are tied, will a tiebreaker be held? If so, what criteria will be used?",
+"Should rows containing NULL or missing values be excluded?"
+]
+}}
+[Answer]
+”’json
+{{
+"translated_text":[
+"Return all ties.",
+"Exclude NULL."
+]
+}}
+”’
+==========
+Here is a new example, please stasrt answering:
+[Guide]
+{guide}
+[Original_text]
+{original_text}
+[Context]
+{context}
+[translation]
