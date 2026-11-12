@@ -37,3 +37,4 @@ app/static/
 backend/static/
 docs/context.txt
 backend/test/generated_schema_desc.txt
+dist/
