@@ -1,3 +1,4 @@
+import os
 # server.py
 import asyncio
 import uuid
@@ -24,7 +25,7 @@ sys.modules[_spec.name] = _pipeline
 _spec.loader.exec_module(_pipeline)
 
 run_direct = getattr(_pipeline, "run_direct")
-TABLES_JSON_PATH = getattr(_pipeline, "TABLES_JSON_PATH")
+TABLES_JSON_PATH = Path(os.environ.get("TABLES_JSON_PATH") or (getattr(_pipeline, "TABLES_JSON_PATH")))
 UI_TEMPLATE_PATH = Path(__file__).parent / "templates" / "context.html"
 
 app = FastMCP(name="demo-echo", version="0.0.1")

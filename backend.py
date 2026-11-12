@@ -41,8 +41,8 @@ from openai import OpenAI
 # --- 경로/환경 설정 -------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 PROMPT_DIR = BASE_DIR / "prompts"
-TABLES_JSON_PATH = BASE_DIR / "metadata" / "tables1223.json"
-ORACLE_JSON_PATH = Path(BASE_DIR / "ORACLE_INFO.json")
+TABLES_JSON_PATH = Path(os.environ.get("TABLES_JSON_PATH") or (BASE_DIR / "metadata" / "tables1223.json"))
+ORACLE_JSON_PATH = Path(os.environ.get("ORACLE_JSON_PATH") or (Path(BASE_DIR / "ORACLE_INFO.json")))
 with open(ORACLE_JSON_PATH, 'r', encoding='utf-8') as file:
     ORACLE_JSON = json.load(file)
 
@@ -68,8 +68,8 @@ Take care of [Context].
 {context}
 """
 
-client = OpenAI(base_url="http://127.0.0.1:8001/v1", api_key="dummy")
-url = "http://127.0.0.1:8002/rerank"
+client = OpenAI(base_url=os.environ.get("EMBEDDING_BASE_URL", "http://localhost:8001/v1"), api_key=os.environ.get("EMBEDDING_API_KEY") or "EMPTY")
+url = os.environ.get("RERANK_URL", "http://localhost:8002/rerank")
 
 def replace_bracket_value(s: str, new_value: str) -> str:
     before, rest = s.split("[", 1)
@@ -323,7 +323,7 @@ driver = GraphDatabase.driver(URI, auth = AUTH)
 retriever = GraphRAGRetriever(driver)
 
 #--- RAG 벡터 스페이스 load ------------------------------------------------------------
-persist_dir = BASE_DIR / "vectorstores" / "faiss_store"
+persist_dir = Path(os.environ.get("FAISS_INDEX_PATH") or (BASE_DIR / "vectorstores" / "faiss_store"))
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 vectorstore = FAISS.load_local(
@@ -519,7 +519,7 @@ def run_sql(
     password = ORACLE_JSON[db_name]["ORACLE_PASSWORD"]
     if not is_safe_query(sql):
         print("Not Safe!")
-    oracledb.init_oracle_client(lib_dir="/tmp/opt/oracle/instantclient_19_28")
+    oracledb.init_oracle_client(lib_dir=os.environ.get("ORACLE_CLIENT_LIB_DIR") or None)
     try: conn = oracledb.connect(user=user, password = password, dsn=f"{host}:{port}/{service_name}")
     except:
         print("error")

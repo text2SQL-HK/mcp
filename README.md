@@ -3,3 +3,7 @@ MCP 서버에서는 LLM으로부터 유저 query를 받아 text-to-sql (로컬 L
 
 uvicorn MCP.server-mod:api --host 127.0.0.1 --port 1234
 으로 실행 가능합니다.
+
+## Private configuration
+
+See [SECURITY_SETUP.md](SECURITY_SETUP.md) before running. Private data and credentials must be supplied separately.
